@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kcfg xmlns="http://www.kde.org/standards/kcfg/1.0"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="http://www.kde.org/standards/kcfg/1.0
+                          http://www.kde.org/standards/kcfg/1.0.xsd">
+  <kcfgfile name=""/>
+  <group name="General">
+    <entry name="graphHours" type="Int">
+      <default>2</default>
+      <label>Hours of price history shown in the trend chart</label>
+      <min>1</min>
+      <max>24</max>
+    </entry>
+
+    <!-- Index into ConfigGeneral.qml's chart-style ComboBox: 0 = Line,
+         1 = Bar. Stored as a plain index (rather than a String) since a
+         QQC2.ComboBox's currentText isn't directly settable, so a cfg_
+         alias needs to target currentIndex instead -- see
+         contents/ui/ConfigGeneral.qml. -->
+    <entry name="chartStyle" type="Int">
+      <default>0</default>
+      <label>Trend chart style: 0 = Line, 1 = Bar</label>
+      <min>0</min>
+      <max>1</max>
+    </entry>
+
+    <!-- Internal bookkeeping, not exposed in the config UI. Lets the
+         widget redisplay the last known-good price immediately on
+         Plasma startup, and when a refresh fails without ever reaching
+         the server (see contents/code/comed.js and contents/ui/main.qml). -->
+    <entry name="lastBand" type="String">
+      <default>UNKNOWN</default>
+    </entry>
+    <entry name="lastGoodPriceText" type="String">
+      <default></default>
+    </entry>
+    <entry name="lastGoodFeedTimestampMillis" type="LongLong">
+      <default>0</default>
+    </entry>
+  </group>
+</kcfg>

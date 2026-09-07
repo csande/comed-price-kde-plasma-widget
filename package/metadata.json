@@ -1,0 +1,18 @@
+{
+    "KPackageStructure": "Plasma/Applet",
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "Your Name"
+            }
+        ],
+        "Category": "Online Services",
+        "Description": "Shows the current ComEd Hourly Pricing rate, a short-term trend chart, and a manual refresh action.",
+        "Icon": "utilities-energy-monitor",
+        "Id": "com.example.comedliveprices",
+        "License": "MIT",
+        "Name": "ComEd Live Prices",
+        "Version": "1.0"
+    },
+    "X-Plasma-API-Minimum-Version": "6.0"
+}
