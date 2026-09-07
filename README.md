@@ -191,15 +191,14 @@ A single poll attempts up to 3 fetches before giving up for that cycle
   immediately rather than retrying, since those indicate a problem with
   the request itself rather than a transient condition.
 
-If every attempt in a cycle fails *without ever receiving an HTTP
-response* (suggesting no network was reachable at all, as opposed to
-reaching ComEd and getting an error), the widget redisplays the last
-successfully fetched price rather than showing "unavailable" — that
-last-known-good price and its timestamp persist across Plasma restarts
-via the widget's own config storage. A fetch that *does* reach the
-server but fails, or one that succeeds but returns stale data, shows
-the explicit unavailable state instead, since those aren't connectivity
-problems.
+If every attempt in a cycle fails — whether the request never reached
+the server at all, reached it but got an error, or succeeded but
+returned only stale or unusable data — the widget shows the explicit
+unavailable state uniformly. The one exception is at startup: the last
+successfully fetched price and its timestamp persist across Plasma
+restarts via the widget's own config storage, so the widget has
+something meaningful to show immediately before its first fetch of a
+new session completes.
 
 There's no fixed connect/read timeout on individual attempts — this
 relies on Qt's own network stack timeout, which is generous but not a

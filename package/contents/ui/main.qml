@@ -66,9 +66,8 @@ PlasmoidItem {
         id: retryTimer
         repeat: false
         property int nextAttempt: 1
-        property bool everSawHttpResponse: false
         property var callback: null
-        onTriggered: root.doAttempt(nextAttempt, everSawHttpResponse, callback)
+        onTriggered: root.doAttempt(nextAttempt, callback)
     }
 
     // ---- Startup / stale-state restoration ----
@@ -76,8 +75,7 @@ PlasmoidItem {
     // Restores the last successfully fetched price (and its color band)
     // from persisted config, so the widget shows something meaningful
     // immediately after Plasma restarts, before the first refresh
-    // completes. Also used when a refresh fails without ever reaching
-    // the server -- see applyResult()'s "noConnectivity" branch.
+    // completes.
     function restoreLastGoodState() {
         var band = Plasmoid.configuration.lastBand || "UNKNOWN"
         currentBand = band
@@ -99,31 +97,34 @@ PlasmoidItem {
     function refresh() {
         if (refreshing) return
         refreshing = true
-        doAttempt(1, false, applyResult)
+        doAttempt(1, applyResult)
     }
 
     // ---- Fetch + retry state machine ----
     //
-    // Desktop simplifications vs. the Android ComedApiClient/WidgetUpdateUtil:
+    // Simplifications vs. the Android ComedApiClient/WidgetUpdateUtil this
+    // was ported from:
     //  - No upfront network-availability check (QML has no simple built-in
-    //    connectivity API) and no Doze-idle analog (desktop OSes don't have
-    //    one). The distinction the Android code used it for -- "did any
-    //    attempt ever get an HTTP response at all" -- is still tracked and
-    //    still used below to choose between "noConnectivity" (redisplay the
-    //    last known-good price) and "unavailable" (show the explicit
-    //    unavailable state).
+    //    connectivity API).
+    //  - No Doze-idle analog. The Android client redisplays the last
+    //    known-good price, rather than showing "unavailable", for a
+    //    connectivity failure specifically combined with the device being
+    //    in Doze idle mode -- reasoning that in that combination, the OS
+    //    itself likely blocked the request rather than a real outage.
+    //    Desktop has no equivalent condition to key off of, so rather than
+    //    approximate it, any failure to obtain a fresh, non-stale price --
+    //    no response, a bad response, retries exhausted, or a stale feed --
+    //    uniformly shows the explicit "price unavailable" state instead.
     //  - No explicit connect/read timeout is enforced; this relies on Qt's
     //    own network stack timeout, which is generous but not a fixed
     //    10 seconds like the Android client's.
 
-    function doAttempt(attemptNumber, everSawHttpResponse, callback) {
+    function doAttempt(attemptNumber, callback) {
         var xhr = new XMLHttpRequest()
         xhr.onreadystatechange = function() {
             if (xhr.readyState !== XMLHttpRequest.DONE) return
 
             var status = xhr.status
-            var sawResponse = status !== 0
-            var sawAny = everSawHttpResponse || sawResponse
 
             if (status === 200) {
                 var points = Comed.parsePoints(xhr.responseText)
@@ -133,27 +134,26 @@ PlasmoidItem {
                     // Succeeded but returned nothing usable -- worth a
                     // retry rather than treating this like a populated
                     // response.
-                    retryOrGiveUp(attemptNumber, sawAny, callback, 0)
+                    retryOrGiveUp(attemptNumber, callback, 0)
                 }
                 return
             }
 
             if (Comed.RETRYABLE_HTTP_CODES.indexOf(status) !== -1) {
                 var retryAfter = Comed.parseRetryAfter(xhr.getResponseHeader("Retry-After"))
-                retryOrGiveUp(attemptNumber, sawAny, callback, retryAfter)
+                retryOrGiveUp(attemptNumber, callback, retryAfter)
                 return
             }
 
             if (status === 0) {
                 // No HTTP response at all -- connection-level failure.
-                retryOrGiveUp(attemptNumber, sawAny, callback, null)
+                retryOrGiveUp(attemptNumber, callback, null)
                 return
             }
 
             // Any other HTTP status indicates a problem with the request
-            // itself, not a transient condition -- fail now. This reached
-            // the server, so it's an explicit "unavailable", not a
-            // connectivity issue.
+            // itself, not a transient condition -- fail now rather than
+            // retrying.
             refreshing = false
             callback({ status: "unavailable" })
         }
@@ -162,18 +162,13 @@ PlasmoidItem {
         xhr.send()
     }
 
-    function retryOrGiveUp(attemptNumber, everSawHttpResponse, callback, retryAfterMillis) {
+    function retryOrGiveUp(attemptNumber, callback, retryAfterMillis) {
         if (attemptNumber >= Comed.MAX_ATTEMPTS) {
             refreshing = false
-            if (everSawHttpResponse) {
-                callback({ status: "unavailable" })
-            } else {
-                callback({ status: "noConnectivity" })
-            }
+            callback({ status: "unavailable" })
             return
         }
         retryTimer.nextAttempt = attemptNumber + 1
-        retryTimer.everSawHttpResponse = everSawHttpResponse
         retryTimer.callback = callback
         retryTimer.interval = Comed.backoffDelayMillis(attemptNumber, retryAfterMillis)
         retryTimer.start()
@@ -220,18 +215,16 @@ PlasmoidItem {
             Plasmoid.configuration.lastBand = currentBand
             Plasmoid.configuration.lastGoodPriceText = priceText
             Plasmoid.configuration.lastGoodFeedTimestampMillis = result.feedTimestampMillis
-        } else if (result.status === "feedStale" || result.status === "unavailable") {
+        } else {
+            // feedStale or unavailable -- both mean there's no usable
+            // price right now, so both show the explicit unavailable
+            // state rather than a stale or stand-in figure.
             currentPrice = NaN
             currentBand = "UNKNOWN"
             priceColor = Comed.colorForBand("UNKNOWN")
             priceText = Comed.PRICE_UNAVAILABLE_TEXT
             timeText = Comed.TIME_PLACEHOLDER_TEXT
             Plasmoid.configuration.lastBand = currentBand
-        } else if (result.status === "noConnectivity") {
-            // Mirrors the Android widget: a fetch that never reached the
-            // server redisplays the last known-good price instead of an
-            // explicit "unavailable" state.
-            restoreLastGoodState()
         }
     }
 }
