@@ -77,7 +77,7 @@ Item {
                 text: "<a href=\"https://hourlypricing.comed.com/live-prices/\">https://hourlypricing.comed.com/live-prices/</a>"
                 textFormat: Text.RichText
                 opacity: 0.7
-                font.pixelSize: Kirigami.Units.gridUnit * 0.6
+                font.pixelSize: Kirigami.Units.gridUnit * 0.7
                 elide: Text.ElideMiddle
                 Layout.maximumWidth: Kirigami.Units.gridUnit * 9
                 onLinkActivated: Qt.openUrlExternally(link)
