@@ -72,6 +72,7 @@ Item {
 
         RowLayout {
             Layout.fillWidth: true
+            Layout.topMargin: -Kirigami.Units.smallSpacing
 
             PlasmaComponents3.Label {
                 text: "<a href=\"https://hourlypricing.comed.com/live-prices/\">https://hourlypricing.comed.com/live-prices/</a>"
