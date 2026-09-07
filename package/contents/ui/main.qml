@@ -18,7 +18,13 @@ PlasmoidItem {
     property string timeText: Comed.TIME_PLACEHOLDER_TEXT
     property color priceColor: Comed.colorForBand("UNKNOWN")
     property bool refreshing: false
-    property var historyPoints: []              // [{millisUtc, price}], oldest first, within the configured graph window
+    property var rawFeedPoints: []               // [{millisUtc, price}], oldest first, full feed as of the last successful fetch (unfiltered)
+
+    // A live binding, not a plain assigned property: re-evaluates
+    // automatically whenever either rawFeedPoints or the graphHours
+    // config setting changes, so adjusting the "Trend chart history"
+    // setting updates the graph immediately -- no new fetch required.
+    property var historyPoints: Comed.filterHistory(rawFeedPoints, Plasmoid.configuration.graphHours)
 
     compactRepresentation: CompactRepresentation {
         priceText: root.priceText
@@ -206,7 +212,10 @@ PlasmoidItem {
             priceColor = Comed.colorForBand(currentBand)
             priceText = Comed.formatPrice(result.average)
             timeText = Comed.formatTime(result.feedTimestampMillis)
-            historyPoints = Comed.filterHistory(result.points, Plasmoid.configuration.graphHours)
+            // historyPoints was assigned directly here before -- now it's
+            // a live binding (declared above) derived from rawFeedPoints,
+            // so just store the raw fetch result.
+            rawFeedPoints = result.points
 
             Plasmoid.configuration.lastBand = currentBand
             Plasmoid.configuration.lastGoodPriceText = priceText
