@@ -30,7 +30,6 @@ Item {
 
             PlasmaComponents3.Label {
                 text: "ComEd Live Prices"
-                font.bold: true
                 font.pixelSize: Kirigami.Units.gridUnit
                 elide: Text.ElideRight
             }
