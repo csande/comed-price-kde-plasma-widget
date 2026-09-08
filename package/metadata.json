@@ -9,7 +9,7 @@
         "Category": "Online Services",
         "Description": "Shows the current ComEd Hourly Pricing rate, a short-term trend chart, and a manual refresh action.",
         "Icon": "utilities-energy-monitor",
-        "Id": "com.example.comedliveprices",
+        "Id": "com.github.csande.comed-price-kde-plasma-widget",
         "License": "MIT",
         "Name": "ComEd Live Prices",
         "Version": "1.0"

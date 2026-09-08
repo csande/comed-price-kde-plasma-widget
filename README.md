@@ -27,7 +27,8 @@ comed-price-kde-plasma-widget/
 ```
 
 `package/` is the plasmoid itself — that's the directory KDE's tools
-expect. `metadata.json`'s `KPlugin.Id` is `com.example.comedliveprices`;
+expect. `metadata.json`'s `KPlugin.Id` is
+`com.github.csande.comed-price-kde-plasma-widget`;
 change it (and the `Authors`/`License` fields) before publishing this
 anywhere beyond your own machine, since the Id is meant to be
 reverse-DNS-unique.
@@ -82,7 +83,7 @@ and `kpackagetool6` won't touch it automatically. Remove it directly and
 reinstall instead:
 
 ```sh
-rm -rf ~/.local/share/plasma/plasmoids/com.example.comedliveprices
+rm -rf ~/.local/share/plasma/plasmoids/com.github.csande.comed-price-kde-plasma-widget
 kpackagetool6 --type Plasma/Applet --install package
 ```
 
@@ -115,7 +116,7 @@ the installed package itself, using the `Id` from `metadata.json` —
 not the directory name:
 
 ```sh
-kpackagetool6 --type Plasma/Applet --remove com.example.comedliveprices
+kpackagetool6 --type Plasma/Applet --remove com.github.csande.comed-price-kde-plasma-widget
 ```
 
 This deletes the plasmoid's files but leaves behind the small amount of
