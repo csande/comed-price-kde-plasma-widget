@@ -26,8 +26,8 @@
 
     <!-- Internal bookkeeping, not exposed in the config UI. Lets the
          widget redisplay the last known-good price immediately on
-         Plasma startup, and when a refresh fails without ever reaching
-         the server (see contents/code/comed.js and contents/ui/main.qml). -->
+         Plasma startup, before the first fetch of a new session
+         completes (see contents/ui/main.qml's restoreLastGoodState). -->
     <entry name="lastBand" type="String">
       <default>UNKNOWN</default>
     </entry>

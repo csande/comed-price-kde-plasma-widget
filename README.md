@@ -1,27 +1,29 @@
 # ComEd Live Prices — Plasma widget
 
 A KDE Plasma 6 desktop widget showing the current ComEd Hourly Pricing
-rate, colored by price band, plus a short-term trend chart.
+rate, colored by price band, plus a short-term trend chart (switchable
+between a line and a bar style).
 
 ## Directory structure
 
 ```
 comed-price-kde-plasma-widget/
 ├── README.md
+├── mock_comed_server.py       # local test server -- see "Testing without live data"
 └── package/
     ├── metadata.json
     └── contents/
         ├── ui/
-        │   ├── main.qml               # root plasmoid: state, poll timer, fetch/retry
-        │   ├── CompactRepresentation.qml   # panel form: price text, click to refresh
-        │   ├── FullRepresentation.qml      # desktop form: title, price, time, graph, refresh button
-        │   ├── PriceGraph.qml              # Canvas-based trend line
-        │   └── ConfigGeneral.qml           # "graph history hours" setting page
+        │   ├── main.qml                    # root plasmoid: state, poll timer, fetch/retry
+        │   ├── CompactRepresentation.qml    # panel form: price + time, click opens the popup
+        │   ├── FullRepresentation.qml       # desktop form: title, price, refresh button, link, time, chart
+        │   ├── PriceGraph.qml               # Canvas-based chart (line or bar style)
+        │   └── ConfigGeneral.qml            # config page: chart style + chart history hours
         ├── config/
-        │   ├── main.xml               # KConfigXT schema (graphHours + persisted last-good state)
-        │   └── config.qml             # registers the config page above
+        │   ├── main.xml                # KConfigXT schema (chartStyle, graphHours, persisted last-good state)
+        │   └── config.qml              # registers the config page above
         └── code/
-            └── comed.js               # pure logic: price math, formatting, band/color, parsing
+            └── comed.js                # pure logic: price math, formatting, band/color, parsing
 ```
 
 `package/` is the plasmoid itself — that's the directory KDE's tools
@@ -30,16 +32,18 @@ change it (and the `Authors`/`License` fields) before publishing this
 anywhere beyond your own machine, since the Id is meant to be
 reverse-DNS-unique.
 
-## Building / installing
+## Requirements
 
-Requires Plasma 6 (targets the `org.kde.plasma.plasmoid` QML API and
+Plasma 6 (targets the `org.kde.plasma.plasmoid` QML API and
 `kpackagetool6`; Fedora KDE Plasma spins currently ship Plasma 6).
 
-Run these from the repo root (`comed-price-kde-plasma-widget/`, the directory that
-*contains* `package/` — not from inside `package/` itself; `--install
-package` looks for a subdirectory named `package` relative to wherever
-the command runs, so running it from inside `package/` fails with "No
-such file"):
+## Installing
+
+Run these from the repo root (`comed-price-kde-plasma-widget/`, the
+directory that *contains* `package/` — not from inside `package/`
+itself; `--install package` looks for a subdirectory named `package`
+relative to wherever the command runs, so running it from inside
+`package/` fails with "No such file"):
 
 ```sh
 kpackagetool6 --type Plasma/Applet --install package
@@ -47,22 +51,35 @@ kpackagetool6 --type Plasma/Applet --install package
 
 (If already inside `package/`, use `--install .` instead.)
 
-To pick up changes after editing, use `--upgrade` instead of
-`--install`, then restart Plasma's shell so it reloads the QML:
+Once installed, add it like any other widget: right-click the desktop
+or a panel → **Add Widgets…** → search "ComEd Live Prices".
+
+## Upgrading (after editing files)
 
 ```sh
 kpackagetool6 --type Plasma/Applet --upgrade package
-systemctl --user restart plasma-plasmashell.service
+kquitapp6 plasmashell
+sleep 2
+kstart plasmashell
 ```
 
+The `kquitapp6` / `sleep` / `kstart` sequence fully restarts Plasma's
+shell so it reloads the QML — this is the standard loop used throughout
+development, since QML changes generally aren't picked up by an
+already-running `plasmashell`. `sleep 2` gives the old process time to
+fully exit before starting a new one; without it, `kstart` can
+occasionally race the shutdown. `systemctl --user restart
+plasma-plasmashell.service` is a shorter equivalent when that systemd
+unit is available, but the three-command sequence above is the more
+universally reliable one and doesn't depend on that unit existing.
+
 (`kstart`, not `kstart6` — that tool isn't versioned in either Plasma 5
-or 6. `kquitapp6 plasmashell && kstart plasmashell` works too if the
-`systemctl` unit isn't available.)
+or 6.)
 
 If `--upgrade` refuses with something like `KPackageStructure ... does
 not match requested format`, the installed copy predates a metadata fix
 and `kpackagetool6` won't touch it automatically. Remove it directly and
-reinstall:
+reinstall instead:
 
 ```sh
 rm -rf ~/.local/share/plasma/plasmoids/com.example.comedliveprices
@@ -73,11 +90,10 @@ kpackagetool6 --type Plasma/Applet --install package
 
 That message is Plasma's generic fallback whenever the QML fails to
 load for *any* reason (a bad import, a syntax error, a wrong root item
-type) and the package doesn't declare
-`X-Plasma-API-Minimum-Version` — this package does declare it, but if
-the message still appears after installing the current files, something
-else in the QML is failing to load and getting misreported as a version
-problem.
+type) and the package doesn't declare `X-Plasma-API-Minimum-Version` —
+this package does declare it, but if the message still appears after
+installing the current files, something else in the QML is failing to
+load and getting misreported as a version problem.
 
 `plasmoidviewer` prints the real underlying error directly to the
 terminal, instead of the generic message the desktop shows:
@@ -87,17 +103,9 @@ plasmoidviewer -a package
 ```
 
 Run that from the repo root and share whatever it prints — that's the
-actual cause, not the version mismatch text.
-
-Once installed, add it like any other widget: right-click the desktop
-or a panel → **Add Widgets…** → search "ComEd Live Prices".
-
-For faster iteration while developing, `plasmoidviewer` renders a
-plasmoid standalone without restarting the whole shell:
-
-```sh
-plasmoidviewer -a package
-```
+actual cause, not the version-mismatch text. It also doubles as a
+faster development loop: it renders the plasmoid standalone in its own
+window, without needing a full shell restart for every change.
 
 ## Uninstalling
 
@@ -112,8 +120,8 @@ kpackagetool6 --type Plasma/Applet --remove com.example.comedliveprices
 
 This deletes the plasmoid's files but leaves behind the small amount of
 persisted state described in "Fetch reliability" below (the last
-known-good price and the graph-history setting), stored under Plasma's
-own per-applet config rather than anywhere inside the package. It's
+known-good price and the config settings), stored under Plasma's own
+per-applet config rather than anywhere inside the package. It's
 harmless to leave in place — it'll simply be unused — but to clear it
 too, remove the corresponding group from Plasma's applet config, e.g.:
 
@@ -132,15 +140,27 @@ directly in a text editor while `plasmashell` isn't running.
 
 ## Configuring
 
+Right-click the widget → **Configure ComEd Live Prices…**:
+
+- **Trend chart style**: Line or Bar (default Line). Line splits each
+  segment's color exactly at the point where the interpolated price
+  crosses a band threshold, so a green stretch is never plotted higher
+  than an orange one. Bar draws one bar per data point, colored by that
+  point's own price, with a zero baseline so a negative price extends
+  the bar downward instead of clamping it.
+- **Trend chart history**: 1–24 hours, default 2. Adjusts immediately —
+  it's a live binding over already-fetched data, not something that
+  waits for the next poll. The underlying feed already returns the last
+  24 hours in one response regardless of this setting, so widening it
+  doesn't cost any extra requests.
+
+Also available, but not on this config page since it's a built-in
+Plasma mechanism rather than something this widget implements:
+
 - **Background**: right-click the widget (when placed on the desktop)
   for a background-type option (Standard / Transparent / None) — the
-  same mechanism the Weather widget uses. No setting inside this
-  widget's own config page controls this; it's a built-in Plasma
-  capability enabled via the widget's `backgroundHints`.
-- **Trend chart history**: right-click the widget → **Configure ComEd
-  Live Prices…** → a single "hours of history" spinbox, default 2.
-  Adjust freely; the underlying feed already returns the last 24 hours
-  in one response, so widening this doesn't cost any extra requests.
+  same mechanism the Weather widget uses, enabled via the widget's
+  `backgroundHints`.
 
 ## How the price is calculated
 
@@ -172,9 +192,13 @@ weighted toward the latest one:
   synchronized to ComEd's publish schedule — while still catching a
   genuine feed outage within a few polling cycles.
 
-The graph reuses the same fetch: no separate request is made for
+The trend chart reuses the same fetch: no separate request is made for
 history. It's simply filtered down to the last N hours (the "Trend
-graph history" setting above) and drawn oldest-to-newest.
+chart history" setting above) and drawn oldest-to-newest. Negative
+prices (ComEd's real-time rate occasionally goes negative) are handled
+correctly by both chart styles — the Y axis extends below zero as
+needed, and a zero line is drawn across the chart whenever zero falls
+within the visible price range, including right at the bottom edge.
 
 ## Fetch reliability
 
@@ -206,6 +230,35 @@ hard-coded value.
 
 ## Display
 
+### Desktop (full) view
+
+- **Row 1**: title ("ComEd Live Prices", left) → spacer → refresh
+  button → price (colored by band, bold, rightmost). The refresh button
+  swaps in place for a busy spinner while a fetch is in progress, rather
+  than a spinner appearing elsewhere alongside it.
+- **Row 2**: a clickable link to ComEd's live prices page (left,
+  truncates with an ellipsis if the widget is narrow) → spacer → the
+  feed's own reported time (right).
+- **Chart**: the line or bar chart, per the "Trend chart style" setting,
+  filling the rest of the widget.
+- **Sizing**: preferred size is 24×18 grid units, with a minimum width
+  of 24 (not smaller) — the minimum width was raised specifically
+  because the clickable link and the time text would otherwise collide
+  at narrower widths.
+
+### Panel (compact) view
+
+- Price and time are stacked vertically (price on top, bold; time below
+  in a much smaller font), centered in the panel cell.
+- Clicking anywhere on the panel cell opens the desktop view as a popup
+  (`Plasmoid.expanded`), rather than triggering a refresh directly — the
+  popup has more room for the chart and its own refresh button.
+- While a fetch is in progress, the price/time content is replaced by a
+  spinner sized to match, so the panel cell's size doesn't jitter
+  between the two states.
+
+### Both views
+
 - **Price text**: `⚡ 12.3¢` format, or `⚡ —¢` when unavailable.
 - **Time text**: the feed's own timestamp for its most recent data
   point (not "when this widget happened to poll"), formatted using the
@@ -218,18 +271,40 @@ hard-coded value.
   - Orange `#D38240`
   - Red `#C50033`
   - Unknown/unavailable `#9E9E9E`
-- **Loading state**: a small busy indicator appears next to the title
-  and the refresh button disables itself while a fetch is in progress;
-  the last price, time, and graph stay visible underneath rather than
-  being replaced.
-- **Background**: transparent or opaque, configurable per the
-  "Configuring" section above.
 
 ## Polling
 
 A plain 5-minute QML timer drives refreshes. There's no wake-lock,
 alarm, or catch-up scheduling behind it — if the machine is asleep or
 the process isn't running, the timer simply doesn't fire, and the next
-poll happens whenever the session resumes. A manual refresh (clicking
-the compact-form price text, or the refresh button in the full form)
-runs the same fetch-and-retry logic on demand.
+poll happens whenever the session resumes. A manual refresh (the
+refresh button in the desktop/popup view) runs the same fetch-and-retry
+logic on demand; clicking the panel widget itself opens that view
+rather than refreshing directly (see "Panel (compact) view" above).
+
+## Testing without live data
+
+`mock_comed_server.py` (repo root, no dependencies beyond the Python
+standard library) serves synthetic price data in the same JSON shape as
+ComEd's real feed, for testing the widget when real prices aren't doing
+anything interesting:
+
+```sh
+python3 mock_comed_server.py           # realistic: low plateau -> sudden jump -> high plateau -> sudden drop -> low plateau
+python3 mock_comed_server.py --demo    # fixed dataset for checking the line chart's threshold-crossing color math
+```
+
+Both regenerate their series relative to the current time on every
+request, so the most recent point never trips the 20-minute
+feed-staleness check no matter how long the server's been running.
+
+To point the widget at it, temporarily change `FEED_URL` near the top
+of `contents/code/comed.js`:
+
+```js
+var FEED_URL = "http://127.0.0.1:8000/api?type=5minutefeed"
+```
+
+**Remember to change it back** to the real endpoint
+(`https://hourlypricing.comed.com/api?type=5minutefeed`) before actual
+use — it's easy to forget after a testing session.
