@@ -15,10 +15,10 @@ Item {
 
     signal refreshRequested()
 
-    Layout.minimumWidth: Kirigami.Units.gridUnit * 10
+    Layout.minimumWidth: Kirigami.Units.gridUnit * 24
     Layout.minimumHeight: Kirigami.Units.gridUnit * 10
-    Layout.preferredWidth: Kirigami.Units.gridUnit * 14
-    Layout.preferredHeight: Kirigami.Units.gridUnit * 12
+    Layout.preferredWidth: Kirigami.Units.gridUnit * 24
+    Layout.preferredHeight: Kirigami.Units.gridUnit * 18
 
     ColumnLayout {
         anchors.fill: parent
