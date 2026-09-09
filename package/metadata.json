@@ -3,7 +3,7 @@
     "KPlugin": {
         "Authors": [
             {
-                "Name": "Your Name"
+                "Name": "Christopher Sande"
             }
         ],
         "Category": "Online Services",
@@ -12,7 +12,8 @@
         "Id": "com.github.csande.comed-price-kde-plasma-widget",
         "License": "MIT",
         "Name": "ComEd Live Prices",
-        "Version": "1.0"
+        "Version": "1.0",
+        "Website": "https://github.com/csande/comed-price-kde-plasma-widget"
     },
     "X-Plasma-API-Minimum-Version": "6.0"
 }

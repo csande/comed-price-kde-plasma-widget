@@ -1,14 +1,21 @@
 # ComEd Live Prices — Plasma widget
 
+[github.com/csande/comed-price-kde-plasma-widget](https://github.com/csande/comed-price-kde-plasma-widget)
+
 A KDE Plasma 6 desktop widget showing the current ComEd Hourly Pricing
 rate, colored by price band, plus a short-term trend chart (switchable
 between a line and a bar style).
+
+## License
+
+MIT — see [LICENSE](LICENSE).
 
 ## Directory structure
 
 ```
 comed-price-kde-plasma-widget/
 ├── README.md
+├── LICENSE
 ├── mock_comed_server.py       # local test server -- see "Testing without live data"
 └── package/
     ├── metadata.json
@@ -27,11 +34,12 @@ comed-price-kde-plasma-widget/
 ```
 
 `package/` is the plasmoid itself — that's the directory KDE's tools
-expect. `metadata.json`'s `KPlugin.Id` is
-`com.github.csande.comed-price-kde-plasma-widget`;
-change it (and the `Authors`/`License` fields) before publishing this
-anywhere beyond your own machine, since the Id is meant to be
-reverse-DNS-unique.
+expect. If you're forking this for a different utility (see "Adapting
+this for another utility" below), give `metadata.json`'s `KPlugin.Id`
+your own reverse-DNS identifier — it's meant to be globally unique per
+project, so keeping this one's would conflict with the original if both
+are ever installed side by side — and update `Authors`/`License` to
+match your own fork.
 
 ## Requirements
 
@@ -309,3 +317,27 @@ var FEED_URL = "http://127.0.0.1:8000/api?type=5minutefeed"
 **Remember to change it back** to the real endpoint
 (`https://hourlypricing.comed.com/api?type=5minutefeed`) before actual
 use — it's easy to forget after a testing session.
+
+## Adapting this for another utility
+
+This widget is written specifically for ComEd's Hourly Pricing API, but
+most of it — the weighted-average price math, retry/backoff logic,
+staleness handling, chart rendering (both line and bar styles), config
+UI, and panel-widget behavior — is generic and shouldn't need touching
+for a fork targeting a similarly-structured real-time pricing feed
+(fetch a JSON array of timestamped price points, compute a current
+figure, show a trend chart). What's actually ComEd-specific:
+
+| What | Where | ComEd-specific value |
+|---|---|---|
+| Feed URL | `comed.js`'s `FEED_URL` | `hourlypricing.comed.com/api?type=5minutefeed` |
+| JSON response shape | `comed.js`'s `parsePoints()` | expects `{millisUTC, price}` fields — a different utility's API almost certainly uses different field names or structure |
+| Price bands | `comed.js`'s `BAND_THRESHOLD_LOW` / `BAND_THRESHOLD_HIGH` | 8¢ / 14¢, specifically ComEd's own published green/orange/red band legend |
+| Widget name/title | `metadata.json`'s `Name`, `FullRepresentation.qml`'s title text | "ComEd Live Prices" |
+| Plugin Id | `metadata.json`'s `Id` | needs to be your own unique reverse-DNS identifier regardless (see "Directory structure" above) |
+| Info link | `FullRepresentation.qml` | hardcoded to ComEd's live-prices page |
+
+If your utility's API returns prices in different units (e.g. $/kWh
+instead of ¢/kWh), the `¢` symbol is hardcoded in `comed.js`'s
+`formatPrice()` and the chart's `formatCents()` in `PriceGraph.qml` —
+both would need updating too.
