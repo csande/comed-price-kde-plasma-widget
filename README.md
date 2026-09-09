@@ -8,7 +8,7 @@ between a line and a bar style).
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT — see [LICENSE](LICENSE.md).
 
 ## Directory structure
 
