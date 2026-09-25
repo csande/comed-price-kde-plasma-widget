@@ -22,7 +22,7 @@ PlasmoidItem {
 
     // A live binding, not a plain assigned property: re-evaluates
     // automatically whenever either rawFeedPoints or the graphHours
-    // config setting changes, so adjusting the "Trend chart history"
+    // config setting changes, so adjusting the "Time series history"
     // setting updates the graph immediately -- no new fetch required.
     property var historyPoints: Comed.filterHistory(rawFeedPoints, Plasmoid.configuration.graphHours)
 

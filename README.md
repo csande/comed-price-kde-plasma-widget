@@ -3,7 +3,7 @@
 [github.com/csande/comed-price-kde-plasma-widget](https://github.com/csande/comed-price-kde-plasma-widget)
 
 A KDE Plasma 6 desktop widget showing the current ComEd Hourly Pricing
-rate, colored by price band, plus a short-term trend chart (switchable
+rate, colored by price band, plus a short-term time series chart (switchable
 between a line and a bar style).
 
 ## License
@@ -151,13 +151,13 @@ directly in a text editor while `plasmashell` isn't running.
 
 Right-click the widget → **Configure ComEd Live Prices…**:
 
-- **Trend chart style**: Line or Bar (default Line). Line splits each
+- **Time series chart style**: Line or Bar (default Line). Line splits each
   segment's color exactly at the point where the interpolated price
   crosses a band threshold, so a green stretch is never plotted higher
   than an orange one. Bar draws one bar per data point, colored by that
   point's own price, with a zero baseline so a negative price extends
   the bar downward instead of clamping it.
-- **Trend chart history**: 1–24 hours, default 2. Adjusts immediately —
+- **Time series history**: 1–24 hours, default 2. Adjusts immediately —
   it's a live binding over already-fetched data, not something that
   waits for the next poll. The underlying feed already returns the last
   24 hours in one response regardless of this setting, so widening it
@@ -201,9 +201,9 @@ weighted toward the latest one:
   synchronized to ComEd's publish schedule — while still catching a
   genuine feed outage within a few polling cycles.
 
-The trend chart reuses the same fetch: no separate request is made for
-history. It's simply filtered down to the last N hours (the "Trend
-chart history" setting above) and drawn oldest-to-newest. Negative
+The time series chart reuses the same fetch: no separate request is made for
+history. It's simply filtered down to the last N hours (the "Time series
+history" setting above) and drawn oldest-to-newest. Negative
 prices (ComEd's real-time rate occasionally goes negative) are handled
 correctly by both chart styles — the Y axis extends below zero as
 needed, and a zero line is drawn across the chart whenever zero falls
@@ -248,7 +248,7 @@ hard-coded value.
 - **Row 2**: a clickable link to ComEd's live prices page (left,
   truncates with an ellipsis if the widget is narrow) → spacer → the
   feed's own reported time (right).
-- **Chart**: the line or bar chart, per the "Trend chart style" setting,
+- **Chart**: the line or bar chart, per the "Time series chart style" setting,
   filling the rest of the widget.
 - **Sizing**: preferred size is 24×18 grid units, with a minimum width
   of 24 (not smaller) — the minimum width was raised specifically
@@ -326,7 +326,7 @@ staleness handling, chart rendering (both line and bar styles), config
 UI, and panel-widget behavior — is generic and shouldn't need touching
 for a fork targeting a similarly-structured real-time pricing feed
 (fetch a JSON array of timestamped price points, compute a current
-figure, show a trend chart). What's actually ComEd-specific:
+figure, show a time series chart). What's actually ComEd-specific:
 
 | What | Where | ComEd-specific value |
 |---|---|---|

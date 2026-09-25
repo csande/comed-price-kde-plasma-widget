@@ -147,7 +147,7 @@ function weightedAverage(points) {
 }
 
 // Returns only the points within `hours` of the most recent point,
-// oldest first, for the trend chart. Independent of MAX_AGE_MINUTES,
+// oldest first, for the time series chart. Independent of MAX_AGE_MINUTES,
 // which governs the weighted-average calculation above, not the graph.
 function filterHistory(points, hours) {
     if (!points || points.length === 0) return []

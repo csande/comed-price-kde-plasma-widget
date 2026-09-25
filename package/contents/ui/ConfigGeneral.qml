@@ -10,14 +10,14 @@ Kirigami.FormLayout {
 
     QQC2.ComboBox {
         id: chartStyleCombo
-        Kirigami.FormData.label: "Trend chart style:"
+        Kirigami.FormData.label: "Time series chart style:"
         // Index must match config/main.xml's chartStyle entry: 0 = Line, 1 = Bar.
         model: ["Line", "Bar"]
     }
 
     QQC2.SpinBox {
         id: graphHoursSpin
-        Kirigami.FormData.label: "Trend chart history:"
+        Kirigami.FormData.label: "Time series history:"
         from: 1
         to: 24
         stepSize: 1
