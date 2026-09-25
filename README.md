@@ -131,21 +131,32 @@ This deletes the plasmoid's files but leaves behind the small amount of
 persisted state described in "Fetch reliability" below (the last
 known-good price and the config settings), stored under Plasma's own
 per-applet config rather than anywhere inside the package. It's
-harmless to leave in place — it'll simply be unused — but to clear it
-too, remove the corresponding group from Plasma's applet config, e.g.:
+harmless to leave in place — it'll simply be unused — but it can be
+cleared too.
+
+`kwriteconfig6` has no option to delete an entire group in one call —
+only `--delete`, which removes a single key — so the simplest way to
+clear the whole `[General]` group is to search
+`~/.config/plasma-org.kde.plasma.desktop-appletsrc` for the group
+containing `graphHours` and delete that section directly in a text
+editor while `plasmashell` isn't running. To do it with `kwriteconfig6`
+instead, delete each key in the group individually:
 
 ```sh
-kwriteconfig6 --file plasma-org.kde.plasma.desktop-appletsrc \
-  --group "Containments" --group "<containment-id>" \
-  --group "Applets" --group "<applet-id>" --group "Configuration" \
-  --group "General" --delete-group
+for key in graphHours chartStyle lastBand lastGoodPriceText lastGoodFeedTimestampMillis; do
+  kwriteconfig6 --file plasma-org.kde.plasma.desktop-appletsrc \
+    --group "Containments" --group "<containment-id>" \
+    --group "Applets" --group "<applet-id>" --group "Configuration" \
+    --group "General" --key "$key" --delete
+done
 ```
 
+This removes every key the widget writes, but leaves the now-empty
+`[General]` group header in place — KConfig treats an empty group the
+same as no group at all, so this is harmless.
+
 `<containment-id>` and `<applet-id>` are specific to where the widget
-was placed; if this level of cleanup matters, it's usually simpler to
-just search `~/.config/plasma-org.kde.plasma.desktop-appletsrc` for the
-`[General]` group containing `graphHours` and delete that section
-directly in a text editor while `plasmashell` isn't running.
+was placed.
 
 ## Configuring
 
