@@ -167,7 +167,17 @@ Right-click the widget → **Configure ComEd Live Prices…**:
   crosses a band threshold, so a green stretch is never plotted higher
   than an orange one. Bar draws one bar per data point, colored by that
   point's own price, with a zero baseline so a negative price extends
-  the bar downward instead of clamping it.
+  the bar downward instead of clamping it. A very faint gridline is drawn
+  across the full width of the chart at each Y-axis tick, so a label
+  can be traced straight across to where it crosses the data. It
+  renders at a fixed opacity against the theme's own (light- or
+  dark-aware) muted text color, rather than compounding that color's
+  own transparency with a second layer of it.
+  Both styles represent a missing reading explicitly rather than
+  papering over it: Line leaves a visible gap in the line instead of
+  connecting straight across the missing point(s), and Bar draws a
+  small "\\" mark, centered on the zero/bottom axis line, in the missing
+  bar's place instead of just skipping it.
 - **Time series history**: 1–24 hours, default 2. Adjusts immediately —
   it's a live binding over already-fetched data, not something that
   waits for the next poll. The underlying feed already returns the last
@@ -212,6 +222,16 @@ weighted toward the latest one:
   synchronized to ComEd's publish schedule — while still catching a
   genuine feed outage within a few polling cycles.
 
+The panel (compact) view always shows this weighted average — it can
+only show a single number with no surrounding context, so the smoothed
+figure is the more representative one to check at a glance. The
+desktop (full) view's own price, next to the chart, shows the single
+most recent raw feed point instead: that view already gives the latest
+reading context via the chart itself, so showing the latest raw
+reading there keeps the number — and its color — consistent with where
+the chart's own line or bar actually ends, rather than a smoothed
+number that can visibly disagree with it right after the price moves.
+
 The time series chart reuses the same fetch: no separate request is made for
 history. It's simply filtered down to the last N hours (the "Time series
 history" setting above) and drawn oldest-to-newest. Negative
@@ -219,6 +239,14 @@ prices (ComEd's real-time rate occasionally goes negative) are handled
 correctly by both chart styles — the Y axis extends below zero as
 needed, and a zero line is drawn across the chart whenever zero falls
 within the visible price range, including right at the bottom edge.
+
+A gap of more than 7.5 minutes (1.5x ComEd's normal 5-minute publish
+cadence) between two consecutive points is treated as one or more
+missing readings, rather than ordinary jitter in when the feed happened
+to publish. One missing slot is inserted per expected 5-minute point
+that isn't there, so a longer outage shows proportionally more gap in
+the chart rather than a single mark regardless of how long it lasted —
+see "Time series chart style" above for how each chart style draws it.
 
 ## Fetch reliability
 
@@ -253,7 +281,9 @@ hard-coded value.
 ### Desktop (full) view
 
 - **Row 1**: title ("ComEd Live Prices", left) → spacer → refresh
-  button → price (colored by band, bold, rightmost). The refresh button
+  button → price (colored by band, bold, rightmost). This price is the
+  single most recent raw feed point, not the panel view's weighted
+  average — see "How the price is calculated" above. The refresh button
   swaps in place for a busy spinner while a fetch is in progress, rather
   than a spinner appearing elsewhere alongside it.
 - **Row 2**: a clickable link to ComEd's live prices page (left,

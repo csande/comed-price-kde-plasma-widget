@@ -7,6 +7,9 @@ import org.kde.kirigami as Kirigami
 Item {
     id: fullRoot
 
+    // priceText/priceColor here reflect the single most recent raw feed
+    // point, not the weighted average the panel view shows -- see
+    // main.qml's fullPriceText for why.
     property string priceText: ""
     property string timeText: ""
     property color priceColor: "#9E9E9E"

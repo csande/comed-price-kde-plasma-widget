@@ -1,10 +1,10 @@
 // ComEd Hourly Pricing math and formatting for the "ComEd Live Prices"
 // Plasma widget. Ported from an existing Android app widget of the same
-// underlying logic (ComedApiClient.kt / WidgetUpdateUtil.kt) so the
-// displayed price, its color band, and the "unavailable" text match
-// exactly. Network I/O and retry orchestration live in ui/main.qml
-// instead of here, since retry backoff needs a QML Timer, which a
-// .pragma library file cannot own.
+// underlying logic (ComedApiClient.kt / WidgetUpdateUtil.kt /
+// PriceChartRenderer.kt) so the displayed price, its color band, and
+// the "unavailable" text match exactly. Network I/O and retry
+// orchestration live in ui/main.qml instead of here, since retry
+// backoff needs a QML Timer, which a .pragma library file cannot own.
 .pragma library
 
 // ---- Feed ------------------------------------------------------------
@@ -123,6 +123,36 @@ function mostRecentMillis(points) {
     }, 0)
 }
 
+// Returns the single most recent point (by millisUtc), or null if points
+// is empty. Used for the time series chart's own price display -- see
+// buildTimeSeriesSlots below and main.qml's applyResult -- as distinct
+// from weightedAverage above, which the panel/compact view still uses.
+function latestPoint(points) {
+    if (!points || points.length === 0) return null
+    var best = points[0]
+    for (var i = 1; i < points.length; i++) {
+        if (points[i].millisUtc > best.millisUtc) best = points[i]
+    }
+    return best
+}
+
+// ComEd's feed publishes on a 5-minute cadence (matches main.qml's own
+// 5-minute poll Timer). Used by buildTimeSeriesSlots below to recognize
+// when one or more expected points are missing from the feed, rather
+// than just connecting or compressing past whatever points happen to
+// exist. Ported from WidgetUpdateUtil.kt's EXPECTED_POINT_INTERVAL_MINUTES.
+var EXPECTED_POINT_INTERVAL_MINUTES = 5.0
+
+// A gap between two consecutive real points wider than this is treated
+// as "at least one point is missing" rather than ordinary jitter in
+// when the feed happened to publish or this widget happened to poll.
+// 1.5x the expected interval gives comfortable room for a few minutes
+// of jitter (see FEED_STALENESS_THRESHOLD_MINUTES above for the kind of
+// timing slop this feed exhibits normally) without also firing on every
+// ordinary tick. Ported from WidgetUpdateUtil.kt's
+// MISSING_POINT_GAP_THRESHOLD_MINUTES.
+var MISSING_POINT_GAP_THRESHOLD_MINUTES = EXPECTED_POINT_INTERVAL_MINUTES * 1.5
+
 // Returns the exponentially-weighted average price, or null if points
 // is empty (mirrors ComedApiClient.fetchPrice's defensive weightTotal
 // check -- can't actually happen for a non-empty list, since the most
@@ -158,6 +188,78 @@ function filterHistory(points, hours) {
     return points
         .filter(function(p) { return p.millisUtc >= cutoff })
         .sort(function(a, b) { return a.millisUtc - b.millisUtc })
+}
+
+// Builds a full `hours` window of missing-only slots, at the expected
+// 5-minute cadence, newest slot anchored to the most recent 5-minute
+// mark at or before right now -- e.g. at 11:24, the newest slot is
+// 11:20, then 11:15, 11:10, and so on -- rather than to the exact
+// current millisecond, which would drift off the times the feed's own
+// points would actually land on. Used by buildTimeSeriesSlots below
+// when there's no real data to anchor a window on instead.
+function buildEmptyWindowSlots(hours) {
+    var intervalMillis = EXPECTED_POINT_INTERVAL_MINUTES * 60000
+    var totalSlots = Math.round(hours * 60 * 60 * 1000 / intervalMillis)
+    var alignedNow = Math.floor(Date.now() / intervalMillis) * intervalMillis
+    var slots = []
+    for (var e = totalSlots; e >= 0; e--) {
+        slots.push({ millisUtc: alignedNow - e * intervalMillis, price: null })
+    }
+    return slots
+}
+
+// Turns the raw feed points into the slot list PriceGraph.qml actually
+// draws: every point still where it was, plus a slot with price === null
+// inserted for each expected 5-minute point that isn't there, rather
+// than silently leaving that gap for the chart to paper over by
+// connecting (line style) or compressing past (bar style) straight
+// through it. Applies the `hours` window via filterHistory above, same
+// as before this existed.
+//
+// A null-price slot is only ever inserted *between* two real points
+// (never before the first or after the last), so the returned list's
+// first and last entries always have a real price -- PriceGraph.qml's
+// line style relies on that for its X axis's time range. Ported from
+// WidgetUpdateUtil.kt's buildTimeSeriesSlots.
+function buildTimeSeriesSlots(points, hours) {
+    var filtered = filterHistory(points, hours)
+    if (filtered.length === 0) {
+        // No data at all to anchor a real time window on -- e.g. before
+        // the very first successful fetch of a session, or a total feed
+        // outage. Rather than returning nothing (which left
+        // PriceGraph.qml with no way to draw axes/labels at all -- see
+        // its own doc comment), build a full `hours` window of missing
+        // slots anchored to now, at the same 5-minute cadence the feed
+        // would normally publish at, so the chart still has an X axis
+        // time range and a full set of missing-data markers to draw,
+        // even with nothing real behind any of them.
+        return buildEmptyWindowSlots(hours)
+    }
+
+    var intervalMillis = EXPECTED_POINT_INTERVAL_MINUTES * 60000
+    var gapThresholdMillis = MISSING_POINT_GAP_THRESHOLD_MINUTES * 60000
+
+    var slots = [{ millisUtc: filtered[0].millisUtc, price: filtered[0].price }]
+    for (var i = 1; i < filtered.length; i++) {
+        var previous = filtered[i - 1]
+        var current = filtered[i]
+        var gapMillis = current.millisUtc - previous.millisUtc
+        if (gapMillis > gapThresholdMillis) {
+            // One or more expected points are missing between these two
+            // -- step forward in exact 5-minute increments from the
+            // previous real point, inserting a null-price slot for each
+            // one that isn't (close enough to) the next real point, so
+            // a longer outage yields proportionally more gap slots
+            // rather than just one regardless of size.
+            var expectedMillis = previous.millisUtc + intervalMillis
+            while (current.millisUtc - expectedMillis > intervalMillis / 2) {
+                slots.push({ millisUtc: expectedMillis, price: null })
+                expectedMillis += intervalMillis
+            }
+        }
+        slots.push({ millisUtc: current.millisUtc, price: current.price })
+    }
+    return slots
 }
 
 // ---- Retry backoff helpers ------------------------------------------

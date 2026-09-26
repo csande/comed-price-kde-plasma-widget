@@ -12,11 +12,32 @@ PlasmoidItem {
     Plasmoid.backgroundHints: PlasmaCore.Types.DefaultBackground | PlasmaCore.Types.ConfigurableBackground
 
     // ---- Shared state, read by both representations ----
-    property real currentPrice: NaN            // cents/kWh; NaN when unavailable
-    property string currentBand: "UNKNOWN"      // GREEN / ORANGE / RED / UNKNOWN
+    property real currentPrice: NaN             // cents/kWh; NaN when unavailable
+    property string currentBand: "UNKNOWN"       // GREEN / ORANGE / RED / UNKNOWN
+
+    // priceText/priceColor are the weighted average (see
+    // comed.js's weightedAverage) -- the panel view keeps showing this,
+    // since it can only show a single number with no surrounding
+    // context, and the average is the more representative one to check
+    // at a glance.
     property string priceText: Comed.PRICE_UNAVAILABLE_TEXT
-    property string timeText: Comed.TIME_PLACEHOLDER_TEXT
     property color priceColor: Comed.colorForBand("UNKNOWN")
+
+    // fullPriceText/fullPriceColor are the single most recent raw feed
+    // point instead (see comed.js's latestPoint), shown by the full
+    // representation next to the chart, whose line/bar already ends on
+    // that same latest reading -- showing the smoothed average there
+    // instead could visibly disagree with where the chart's own line or
+    // bar actually ends when the price just moved. Ported from the
+    // Android app's WidgetUpdateUtil.kt (latestPointDisplay), which
+    // draws the same distinction between its compact and time series
+    // widgets. Falls back to the weighted-average text/color above when
+    // there's no raw point to read from (e.g. the explicit unavailable
+    // state).
+    property string fullPriceText: Comed.PRICE_UNAVAILABLE_TEXT
+    property color fullPriceColor: Comed.colorForBand("UNKNOWN")
+
+    property string timeText: Comed.TIME_PLACEHOLDER_TEXT
     property bool refreshing: false
     property var rawFeedPoints: []               // [{millisUtc, price}], oldest first, full feed as of the last successful fetch (unfiltered)
 
@@ -24,7 +45,11 @@ PlasmoidItem {
     // automatically whenever either rawFeedPoints or the graphHours
     // config setting changes, so adjusting the "Time series history"
     // setting updates the graph immediately -- no new fetch required.
-    property var historyPoints: Comed.filterHistory(rawFeedPoints, Plasmoid.configuration.graphHours)
+    // Each entry is {millisUtc, price}, oldest first, with price === null
+    // marking an expected feed reading that's missing (see comed.js's
+    // buildTimeSeriesSlots) -- PriceGraph.qml draws those as a break in
+    // the line, or a "no data" marker in place of a bar.
+    property var historyPoints: Comed.buildTimeSeriesSlots(rawFeedPoints, Plasmoid.configuration.graphHours)
 
     compactRepresentation: CompactRepresentation {
         priceText: root.priceText
@@ -35,9 +60,9 @@ PlasmoidItem {
     }
 
     fullRepresentation: FullRepresentation {
-        priceText: root.priceText
+        priceText: root.fullPriceText
         timeText: root.timeText
-        priceColor: root.priceColor
+        priceColor: root.fullPriceColor
         historyPoints: root.historyPoints
         refreshing: root.refreshing
         onRefreshRequested: root.refresh()
@@ -80,10 +105,18 @@ PlasmoidItem {
         var band = Plasmoid.configuration.lastBand || "UNKNOWN"
         currentBand = band
         priceColor = Comed.colorForBand(band)
+        // No raw feed points are persisted across restarts (rawFeedPoints
+        // starts out empty each session), so there's nothing to derive a
+        // real "latest point" from yet -- the same restored average-based
+        // text/color stands in for the full view too, until the first
+        // real fetch in applyResult() below replaces it with the actual
+        // latest reading.
+        fullPriceColor = Comed.colorForBand(band)
 
         var lastText = Plasmoid.configuration.lastGoodPriceText
         if (lastText && lastText.length > 0) {
             priceText = lastText
+            fullPriceText = lastText
         }
 
         var lastTs = Plasmoid.configuration.lastGoodFeedTimestampMillis
@@ -212,17 +245,34 @@ PlasmoidItem {
             // so just store the raw fetch result.
             rawFeedPoints = result.points
 
+            // Full view's own price text/color: the single most recent
+            // raw point rather than the weighted average just computed
+            // above -- see fullPriceText's declaration for why. Falls
+            // back to the average-based text/color when the fetch
+            // somehow returned no usable points at all.
+            var latest = Comed.latestPoint(result.points)
+            if (latest) {
+                fullPriceText = Comed.formatPrice(latest.price)
+                fullPriceColor = Comed.colorForBand(Comed.bandForPrice(latest.price))
+            } else {
+                fullPriceText = priceText
+                fullPriceColor = priceColor
+            }
+
             Plasmoid.configuration.lastBand = currentBand
             Plasmoid.configuration.lastGoodPriceText = priceText
             Plasmoid.configuration.lastGoodFeedTimestampMillis = result.feedTimestampMillis
         } else {
             // feedStale or unavailable -- both mean there's no usable
             // price right now, so both show the explicit unavailable
-            // state rather than a stale or stand-in figure.
+            // state rather than a stale or stand-in figure, for both the
+            // panel and the full view.
             currentPrice = NaN
             currentBand = "UNKNOWN"
             priceColor = Comed.colorForBand("UNKNOWN")
             priceText = Comed.PRICE_UNAVAILABLE_TEXT
+            fullPriceColor = Comed.colorForBand("UNKNOWN")
+            fullPriceText = Comed.PRICE_UNAVAILABLE_TEXT
             timeText = Comed.TIME_PLACEHOLDER_TEXT
             Plasmoid.configuration.lastBand = currentBand
         }

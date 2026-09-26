@@ -15,8 +15,8 @@
     <!-- Index into ConfigGeneral.qml's chart-style ComboBox: 0 = Line,
          1 = Bar. Stored as a plain index (rather than a String) since a
          QQC2.ComboBox's currentText isn't directly settable, so a cfg_
-         alias needs to target currentIndex instead -- see
-         contents/ui/ConfigGeneral.qml. -->
+         alias needs to target currentIndex instead (see
+         contents/ui/ConfigGeneral.qml). -->
     <entry name="chartStyle" type="Int">
       <default>0</default>
       <label>Time series chart style: 0 = Line, 1 = Bar</label>

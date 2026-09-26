@@ -18,11 +18,34 @@ import "../code/comed.js" as Comed
 //    height mathematically tied together everywhere along the line: a
 //    green stretch can never be drawn higher than an orange one, since
 //    it's only ever drawn where the interpolated price is actually
-//    below the green/orange threshold.
+//    below the green/orange threshold. A segment spanning a missing
+//    slot (see "points" below) is skipped entirely rather than
+//    connected through, leaving a visible break where the feed actually
+//    has no data.
 //  - Bar: each point is its own bar, coloured by its own price, with a
 //    zero baseline (ComEd prices occasionally go negative) so a bar's
 //    height and color are both independently derived from that single
-//    point -- no interpolation or crossing math needed.
+//    point -- no interpolation or crossing math needed. A missing slot
+//    still reserves its place in the bar sequence (so the gap doesn't
+//    just compress away) but draws a small "\\" marker instead of a bar
+//    -- see drawMissingMarker.
+//
+// Each entry in "points" is {millisUtc, price}, oldest first; price is
+// null for an expected feed reading that's missing (see comed.js's
+// buildTimeSeriesSlots), which is what the two styles above draw a
+// break/marker for instead of a data point. Ported from the Android
+// app's PriceChartRenderer.kt, along with the faint gridline drawn at
+// each Y-axis tick below, full width, so the eye can trace a label
+// straight across to where it crosses the data.
+//
+// If every slot in the window is missing (e.g. a total feed outage, or
+// before the very first successful fetch of a session), there's no real
+// price anywhere to base the Y axis on -- see yAxis below, which falls
+// back to a fixed 0/5/10 cent scale in that case rather than the chart
+// rendering completely blank. The X axis's time labels are unaffected
+// either way, since they come from each slot's millisUtc, which
+// comed.js's buildTimeSeriesSlots still fills in even for an entirely
+// missing window.
 Item {
     id: graphRoot
 
@@ -53,6 +76,19 @@ Item {
                 return
             }
 
+            // Slots with an actual reading -- a missing slot (price ===
+            // null) contributes nothing to the axis bounds below. Note
+            // this can be zero (every slot in the window missing) without
+            // bailing out here: buildTimeSeriesSlots always returns at
+            // least one slot per comed.js's own fallback for "no data at
+            // all", specifically so there's still an X axis time range
+            // and a full window of missing-data markers to draw (see
+            // yAxis and the data loop below) instead of rendering
+            // nothing whatsoever.
+            var presentSlots = graphRoot.points.filter(function(p) {
+                return p.price !== null && p.price !== undefined
+            })
+
             var isBar = graphRoot.chartStyle === graphRoot.styleBar
 
             var labelFont = Kirigami.Theme.smallFont
@@ -60,18 +96,32 @@ Item {
                 ? (labelFont.pointSize + "pt")
                 : (labelFont.pixelSize + "px")
             ctx.font = fontSizePart + " " + labelFont.family
+            // Approximate pixel size for drawMissingMarker's vertical
+            // nudge below -- 1pt = 4/3px at the standard 96dpi Qt/CSS
+            // assumes for point sizes.
+            var labelFontPx = labelFont.pixelSize > 0 ? labelFont.pixelSize : labelFont.pointSize * 1.333
 
             // ---- Y axis (price, in cents): rounded to "nice" tick
             // values. Bars get a forced zero baseline to grow from;
             // the line chart stays tight to the actual data range. ----
-            var prices = graphRoot.points.map(function(p) { return p.price })
-            var rawMinPrice = Math.min.apply(null, prices)
-            var rawMaxPrice = Math.max.apply(null, prices)
-            if (isBar) {
-                rawMinPrice = Math.min(0, rawMinPrice)
-                rawMaxPrice = Math.max(0, rawMaxPrice)
+            var yAxis
+            if (presentSlots.length > 0) {
+                var prices = presentSlots.map(function(p) { return p.price })
+                var rawMinPrice = Math.min.apply(null, prices)
+                var rawMaxPrice = Math.max.apply(null, prices)
+                if (isBar) {
+                    rawMinPrice = Math.min(0, rawMinPrice)
+                    rawMaxPrice = Math.max(0, rawMaxPrice)
+                }
+                yAxis = niceAxis(rawMinPrice, rawMaxPrice, 4)
+            } else {
+                // No real prices anywhere in this window to base a
+                // range on -- fall back to a fixed 0/5/10 cent scale
+                // rather than leaving the axis undefined, so the chart
+                // still has something to label and draw a zero line
+                // against.
+                yAxis = { min: 0, max: 10, ticks: [0, 5, 10], decimals: 0 }
             }
-            var yAxis = niceAxis(rawMinPrice, rawMaxPrice, 4)
 
             // Widest tick label sets the left margin, so labels never clip.
             var maxLabelWidth = 0
@@ -130,8 +180,42 @@ Item {
             ctx.textAlign = "right"
 
             var tickMarkLength = 3
+            // gridColor (Kirigami.Theme.disabledTextColor) already
+            // carries its own partial alpha in most color schemes, on
+            // top of which globalAlpha below applies a second, separate
+            // transparency -- two stacked alpha channels made this
+            // line's effective opacity hard to predict, and it visibly
+            // shifted depending on the widget's own background
+            // transparency setting (right-click -> background type)
+            // since more of whatever's behind the widget was showing
+            // through both layers at once. Forcing the line color to
+            // full opacity here and controlling visibility with only the
+            // explicit globalAlpha below avoids that -- background
+            // transparency still shows through, same as any other
+            // translucent drawing, but now through a single, predictable
+            // alpha.
+            var gridLineColor = Qt.rgba(graphRoot.gridColor.r, graphRoot.gridColor.g, graphRoot.gridColor.b, 1)
             for (var i = 0; i < yAxis.ticks.length; i++) {
                 var y = yFor(yAxis.ticks[i])
+
+                // Faint full-width gridline at this tick's y, so a
+                // value can be traced straight across to where it
+                // crosses the data rather than just read off the axis.
+                // Skipped for whichever tick lands exactly on zero: the
+                // solid zero line below already draws a (much less
+                // faint) reference line at that same y.
+                if (Math.abs(yAxis.ticks[i]) > 0.0001) {
+                    ctx.save()
+                    ctx.strokeStyle = gridLineColor
+                    ctx.lineWidth = 1
+                    ctx.globalAlpha = 0.12
+                    ctx.beginPath()
+                    ctx.moveTo(plotLeft, y)
+                    ctx.lineTo(plotRight, y)
+                    ctx.stroke()
+                    ctx.restore()
+                }
+
                 ctx.globalAlpha = 0.5
                 ctx.beginPath()
                 ctx.moveTo(plotLeft - tickMarkLength, y)
@@ -203,6 +287,10 @@ Item {
                 var baselineY = yFor(0)
                 for (var k = 0; k < n; k++) {
                     var price = graphRoot.points[k].price
+                    if (price === null || price === undefined) {
+                        drawMissingMarker(ctx, xFor(graphRoot.points[k].millisUtc, k), plotBottom, labelFontPx)
+                        continue
+                    }
                     var topY = yFor(price)
                     var barTop = Math.min(baselineY, topY)
                     var barHeight = Math.max(1, Math.abs(baselineY - topY))
@@ -215,19 +303,67 @@ Item {
                 ctx.lineWidth = 2
                 if (n === 1) {
                     // Nothing to connect -- draw a single dot so a lone
-                    // point is still visible.
-                    var soloX = xFor(graphRoot.points[0].millisUtc)
-                    var soloY = yFor(graphRoot.points[0].price)
-                    ctx.fillStyle = Comed.colorForBand(Comed.bandForPrice(graphRoot.points[0].price))
-                    ctx.beginPath()
-                    ctx.arc(soloX, soloY, 2.2, 0, 2 * Math.PI)
-                    ctx.fill()
+                    // point is still visible, but only if it actually
+                    // has data; a lone missing slot has nothing to draw.
+                    var soloPrice = graphRoot.points[0].price
+                    if (soloPrice !== null && soloPrice !== undefined) {
+                        var soloX = xFor(graphRoot.points[0].millisUtc)
+                        var soloY = yFor(soloPrice)
+                        ctx.fillStyle = Comed.colorForBand(Comed.bandForPrice(soloPrice))
+                        ctx.beginPath()
+                        ctx.arc(soloX, soloY, 2.2, 0, 2 * Math.PI)
+                        ctx.fill()
+                    }
                 } else {
                     for (var seg = 0; seg < n - 1; seg++) {
-                        drawSegment(ctx, graphRoot.points[seg], graphRoot.points[seg + 1], xFor, yFor)
+                        var pointA = graphRoot.points[seg]
+                        var pointB = graphRoot.points[seg + 1]
+                        // Only connect two slots that both actually have
+                        // data -- if either side of this segment is
+                        // missing, skip drawing it entirely rather than
+                        // connecting straight through the gap, leaving a
+                        // visible break in the line where the feed
+                        // actually has no data.
+                        var aHasData = pointA.price !== null && pointA.price !== undefined
+                        var bHasData = pointB.price !== null && pointB.price !== undefined
+                        if (aHasData && bHasData) {
+                            drawSegment(ctx, pointA, pointB, xFor, yFor)
+                        }
                     }
                 }
             }
+        }
+
+        // Draws the "no data" marker for a missing bar slot: two
+        // backslashes, centered horizontally on the slot and centered
+        // *vertically on plotBottom* -- which is always exactly where
+        // the bottom-most Y-axis tick sits, and in the common case
+        // where the bar chart's Y axis bottoms out at zero, exactly
+        // where the solid zero line is drawn too. Centering on that
+        // line rather than sitting above it means the marker visibly
+        // crosses it instead of floating as a separate mark near the
+        // bottom -- drawn there regardless of whether the zero line
+        // itself actually gets drawn for this particular price range.
+        // Ported from PriceChartRenderer.kt's drawMissingMarker.
+        //
+        // textBaseline "middle" centers on the font's full ascent+descent
+        // box, which includes room for descenders (glyphs like "g" or
+        // "p" that dip below the baseline) -- a backslash has none, so
+        // its own ink sits entirely above the baseline and ends up
+        // visibly higher than that box's true middle. QtQuick's Canvas
+        // only exposes measureText's width, not ascent/descent, so there
+        // isn't a way to measure the exact offset directly; fontSizePx
+        // fraction below is an empirical nudge downward to compensate,
+        // not a precise calculation, and may need further tuning by eye.
+        function drawMissingMarker(ctx, centerX, plotBottom, fontSizePx) {
+            var descentCompensation = fontSizePx * 0.08
+            ctx.save()
+            ctx.fillStyle = graphRoot.gridColor
+            ctx.globalAlpha = 0.8
+            ctx.textAlign = "center"
+            ctx.textBaseline = "middle"
+            ctx.fillText("\\\\", centerX, plotBottom + descentCompensation)
+            ctx.restore()
         }
 
         // Draws one point-to-point line segment, split into
