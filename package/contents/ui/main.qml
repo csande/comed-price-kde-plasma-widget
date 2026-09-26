@@ -76,8 +76,13 @@ PlasmoidItem {
     // 5-minute poll cadence. If the machine is asleep or the process
     // isn't running, this simply doesn't fire -- there's no wake-lock or
     // alarm-based catch-up on the desktop, matching the "that's fine"
-    // guidance for this port.
+    // guidance for this port. refresh() below restarts this timer's
+    // countdown every time it actually starts a refresh, so a manual
+    // refresh always pushes the next automatic one out to a full 5
+    // minutes from when it was pressed, rather than leaving whatever was
+    // left of the old countdown to fire shortly after.
     Timer {
+        id: pollTimer
         interval: Comed.POLL_INTERVAL_MILLIS
         repeat: true
         running: true
@@ -130,6 +135,17 @@ PlasmoidItem {
     function refresh() {
         if (refreshing) return
         refreshing = true
+        // Restart the poll timer's countdown from right now. When this
+        // refresh was itself triggered by that timer firing, this is a
+        // harmless no-op -- a repeating Timer already re-arms itself for
+        // another `interval` from the moment it fires, so restarting it
+        // at that same instant changes nothing. When this refresh was
+        // triggered manually instead (the refresh button, or the very
+        // first refresh at startup), this is what actually pushes the
+        // next automatic refresh out to a full 5 minutes from now,
+        // rather than leaving it to fire on whatever was left of the
+        // previous countdown.
+        pollTimer.restart()
         doAttempt(1, applyResult)
     }
 

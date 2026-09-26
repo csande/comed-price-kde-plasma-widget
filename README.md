@@ -332,6 +332,13 @@ refresh button in the desktop/popup view) runs the same fetch-and-retry
 logic on demand; clicking the panel widget itself opens that view
 rather than refreshing directly (see "Panel (compact) view" above).
 
+A manual refresh also resets the 5-minute cadence: the next automatic
+poll lands 5 minutes after the manual one, rather than on whatever was
+left of the previous schedule. Refreshing a minute before the next
+automatic poll was due, for example, doesn't fetch twice in quick
+succession — it pushes that next automatic poll out by roughly 4
+minutes instead.
+
 ## Testing without live data
 
 `mock_comed_server.py` (repo root, no dependencies beyond the Python
