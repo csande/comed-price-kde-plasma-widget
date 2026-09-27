@@ -62,6 +62,18 @@ Item {
     property color axisTextColor: Kirigami.Theme.textColor
     property color gridColor: Kirigami.Theme.disabledTextColor
 
+    // Per-line-type appearance knobs (config/main.xml, exposed via
+    // ConfigGeneral.qml). "Width" is line thickness/density; "Alpha" is
+    // opacity. Defaults here match this file's own previous hardcoded
+    // values, so an unbound PriceGraph (e.g. in a standalone preview)
+    // still renders the same as before these existed.
+    property real dataLineWidth: 2
+    property real dataLineAlpha: 1.0
+    property real gridLineWidth: 1
+    property real gridLineAlpha: 0.12
+    property real zeroLineWidth: 1
+    property real zeroLineAlpha: 0.5
+
     Canvas {
         id: canvas
         anchors.fill: parent
@@ -207,8 +219,8 @@ Item {
                 if (Math.abs(yAxis.ticks[i]) > 0.0001) {
                     ctx.save()
                     ctx.strokeStyle = gridLineColor
-                    ctx.lineWidth = 1
-                    ctx.globalAlpha = 0.12
+                    ctx.lineWidth = graphRoot.gridLineWidth
+                    ctx.globalAlpha = graphRoot.gridLineAlpha
                     ctx.beginPath()
                     ctx.moveTo(plotLeft, y)
                     ctx.lineTo(plotRight, y)
@@ -254,8 +266,8 @@ Item {
             if (yAxis.min <= 0 && yAxis.max >= 0) {
                 var zeroY = yFor(0)
                 ctx.strokeStyle = graphRoot.gridColor
-                ctx.lineWidth = 1
-                ctx.globalAlpha = 0.5
+                ctx.lineWidth = graphRoot.zeroLineWidth
+                ctx.globalAlpha = graphRoot.zeroLineAlpha
                 ctx.beginPath()
                 ctx.moveTo(plotLeft, zeroY)
                 ctx.lineTo(plotRight, zeroY)
@@ -300,7 +312,8 @@ Item {
                     ctx.fillRect(barLeft, barTop, barWidth, barHeight)
                 }
             } else {
-                ctx.lineWidth = 2
+                ctx.lineWidth = graphRoot.dataLineWidth
+                ctx.globalAlpha = graphRoot.dataLineAlpha
                 if (n === 1) {
                     // Nothing to connect -- draw a single dot so a lone
                     // point is still visible, but only if it actually
@@ -331,6 +344,7 @@ Item {
                         }
                     }
                 }
+                ctx.globalAlpha = 1.0
             }
         }
 
@@ -467,4 +481,10 @@ Item {
     onGridColorChanged: canvas.requestPaint()
     onWidthChanged: canvas.requestPaint()
     onHeightChanged: canvas.requestPaint()
+    onDataLineWidthChanged: canvas.requestPaint()
+    onDataLineAlphaChanged: canvas.requestPaint()
+    onGridLineWidthChanged: canvas.requestPaint()
+    onGridLineAlphaChanged: canvas.requestPaint()
+    onZeroLineWidthChanged: canvas.requestPaint()
+    onZeroLineAlphaChanged: canvas.requestPaint()
 }

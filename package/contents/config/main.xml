@@ -24,6 +24,47 @@
       <max>1</max>
     </entry>
 
+    <!-- Per-line-type appearance knobs for PriceGraph.qml's Canvas
+         drawing. "Width" controls line thickness/density; "Alpha"
+         controls opacity. Defaults match the values that were
+         previously hardcoded in PriceGraph.qml. -->
+    <entry name="dataLineWidth" type="Int">
+      <default>2</default>
+      <label>Width, in pixels, of the time series chart's data line (Line style only)</label>
+      <min>1</min>
+      <max>6</max>
+    </entry>
+    <entry name="dataLineAlpha" type="Double">
+      <default>1.0</default>
+      <label>Opacity of the time series chart's data line (Line style only)</label>
+      <min>0.0</min>
+      <max>1.0</max>
+    </entry>
+    <entry name="gridLineWidth" type="Int">
+      <default>1</default>
+      <label>Width, in pixels, of the faint horizontal gridlines drawn at each Y-axis tick</label>
+      <min>1</min>
+      <max>6</max>
+    </entry>
+    <entry name="gridLineAlpha" type="Double">
+      <default>0.12</default>
+      <label>Opacity of the faint horizontal gridlines drawn at each Y-axis tick</label>
+      <min>0.0</min>
+      <max>1.0</max>
+    </entry>
+    <entry name="zeroLineWidth" type="Int">
+      <default>1</default>
+      <label>Width, in pixels, of the zero line</label>
+      <min>1</min>
+      <max>6</max>
+    </entry>
+    <entry name="zeroLineAlpha" type="Double">
+      <default>0.5</default>
+      <label>Opacity of the zero line</label>
+      <min>0.0</min>
+      <max>1.0</max>
+    </entry>
+
     <!-- Internal bookkeeping, not exposed in the config UI. Lets the
          widget redisplay the last known-good price immediately on
          Plasma startup, before the first fetch of a new session

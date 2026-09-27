@@ -110,6 +110,12 @@ Item {
             Layout.minimumHeight: Kirigami.Units.gridUnit * 4
             points: fullRoot.historyPoints
             chartStyle: Plasmoid.configuration.chartStyle
+            dataLineWidth: Plasmoid.configuration.dataLineWidth
+            dataLineAlpha: Plasmoid.configuration.dataLineAlpha
+            gridLineWidth: Plasmoid.configuration.gridLineWidth
+            gridLineAlpha: Plasmoid.configuration.gridLineAlpha
+            zeroLineWidth: Plasmoid.configuration.zeroLineWidth
+            zeroLineAlpha: Plasmoid.configuration.zeroLineAlpha
         }
     }
 }
