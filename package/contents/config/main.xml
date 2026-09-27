@@ -59,7 +59,7 @@
       <max>6</max>
     </entry>
     <entry name="zeroLineAlpha" type="Double">
-      <default>0.5</default>
+      <default>1</default>
       <label>Opacity of the zero line</label>
       <min>0.0</min>
       <max>1.0</max>
