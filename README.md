@@ -346,29 +346,6 @@ automatic poll was due, for example, doesn't fetch twice in quick
 succession — it pushes that next automatic poll out by roughly 4
 minutes instead.
 
-## Testing without live data
-
-`mock_comed_server.py` (repo root, no dependencies beyond the Python
-standard library) serves synthetic price data in the same JSON shape as
-ComEd's real feed, for testing the widget when real prices aren't doing
-anything interesting:
-
-```sh
-python3 mock_comed_server.py           # realistic: low plateau -> sudden jump -> high plateau -> sudden drop -> low plateau
-python3 mock_comed_server.py --demo    # fixed dataset for checking the line chart's threshold-crossing color math
-```
-
-Both regenerate their series relative to the current time on every
-request, so the most recent point never trips the 20-minute
-feed-staleness check no matter how long the server's been running.
-
-To point the widget at it, temporarily change `FEED_URL` near the top
-of `contents/code/comed.js`:
-
-```js
-var FEED_URL = "http://127.0.0.1:8000/api?type=5minutefeed"
-```
-
 **Remember to change it back** to the real endpoint
 (`https://hourlypricing.comed.com/api?type=5minutefeed`) before actual
 use — it's easy to forget after a testing session.
