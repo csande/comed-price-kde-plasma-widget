@@ -62,17 +62,16 @@ Item {
     property color axisTextColor: Kirigami.Theme.textColor
     property color gridColor: Kirigami.Theme.disabledTextColor
 
-    // Per-line-type appearance knobs (config/main.xml, exposed via
-    // ConfigGeneral.qml). "Width" is line thickness/density; "Alpha" is
-    // opacity. Defaults here match this file's own previous hardcoded
-    // values, so an unbound PriceGraph (e.g. in a standalone preview)
-    // still renders the same as before these existed.
+    // Fixed appearance values for the chart's lines. "Width" is line
+    // thickness in pixels; "Alpha" is opacity. These used to be
+    // user-configurable via the config page; they are now plain
+    // constants here -- edit them in this file to change the look.
     property real dataLineWidth: 2
     property real dataLineAlpha: 1.0
     property real gridLineWidth: 1
     property real gridLineAlpha: 0.12
     property real zeroLineWidth: 1
-    property real zeroLineAlpha: 0.5
+    property real zeroLineAlpha: 1.0
 
     Canvas {
         id: canvas

@@ -176,20 +176,17 @@ Right-click the widget → **Configure ComEd Live Prices…**:
   Both styles represent a missing reading explicitly rather than
   papering over it: Line leaves a visible gap in the line instead of
   connecting straight across the missing point(s), and Bar draws a
-  small "\\" mark, centered on the zero/bottom axis line, in the missing
+  small "\\" mark, centered on the zero line, in the missing
   bar's place instead of just skipping it.
-- **Data line width / opacity**: thickness (1–6px) and opacity of the
-  chart's data line (Line style only). Defaults 2px, 100% opacity.
-- **Horizontal gridline width / opacity**: thickness (1–6px) and
-  opacity of the faint full-width gridlines drawn at each Y-axis tick.
-  Defaults 1px, 12% opacity.
-- **Zero line width / opacity**: thickness (1–6px) and opacity of the
-  zero line. Defaults 1px, 50% opacity.
 - **Time series history**: 1–24 hours, default 2. Adjusts immediately —
   it's a live binding over already-fetched data, not something that
   waits for the next poll. The underlying feed already returns the last
   24 hours in one response regardless of this setting, so widening it
   doesn't cost any extra requests.
+
+Line widths and opacities (data line, horizontal gridlines, zero line)
+are fixed values defined at the top of `PriceGraph.qml`, not
+user-configurable: 2px / 100%, 1px / 12%, and 1px / 100% respectively.
 
 Also available, but not on this config page since it's a built-in
 Plasma mechanism rather than something this widget implements:
