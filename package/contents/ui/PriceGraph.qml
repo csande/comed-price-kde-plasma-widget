@@ -300,7 +300,7 @@ Item {
                 for (var k = 0; k < n; k++) {
                     var price = graphRoot.points[k].price
                     if (price === null || price === undefined) {
-                        drawMissingMarker(ctx, xFor(graphRoot.points[k].millisUtc, k), plotBottom, labelFontPx)
+                        drawMissingMarker(ctx, xFor(graphRoot.points[k].millisUtc, k), baselineY, labelFontPx)
                         continue
                     }
                     var topY = yFor(price)
@@ -350,14 +350,15 @@ Item {
 
         // Draws the "no data" marker for a missing bar slot: two
         // backslashes, centered horizontally on the slot and centered
-        // *vertically on plotBottom* -- which is always exactly where
-        // the bottom-most Y-axis tick sits, and in the common case
-        // where the bar chart's Y axis bottoms out at zero, exactly
-        // where the solid zero line is drawn too. Centering on that
-        // line rather than sitting above it means the marker visibly
-        // crosses it instead of floating as a separate mark near the
-        // bottom -- drawn there regardless of whether the zero line
-        // itself actually gets drawn for this particular price range.
+        // *vertically on centerY*, which callers pass as the pixel row
+        // for price 0 (baselineY) -- exactly where the solid zero line
+        // is drawn. Centering on that line rather than sitting above it
+        // means the marker visibly crosses it instead of floating as a
+        // separate mark near it. This must be the zero row rather than
+        // plotBottom: the two only coincide when every price is
+        // non-negative. Once a negative price extends the Y axis below
+        // zero, plotBottom sits below the zero line, and a marker drawn
+        // there is no longer aligned with it.
         // Ported from PriceChartRenderer.kt's drawMissingMarker.
         //
         // textBaseline "middle" centers on the font's full ascent+descent
@@ -369,14 +370,14 @@ Item {
         // isn't a way to measure the exact offset directly; fontSizePx
         // fraction below is an empirical nudge downward to compensate,
         // not a precise calculation, and may need further tuning by eye.
-        function drawMissingMarker(ctx, centerX, plotBottom, fontSizePx) {
+        function drawMissingMarker(ctx, centerX, centerY, fontSizePx) {
             var descentCompensation = fontSizePx * 0.08
             ctx.save()
             ctx.fillStyle = graphRoot.gridColor
             ctx.globalAlpha = 0.8
             ctx.textAlign = "center"
             ctx.textBaseline = "middle"
-            ctx.fillText("\\\\", centerX, plotBottom + descentCompensation)
+            ctx.fillText("\\\\", centerX, centerY + descentCompensation)
             ctx.restore()
         }
 
