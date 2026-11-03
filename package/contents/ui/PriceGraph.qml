@@ -425,8 +425,13 @@ Item {
             }
         }
 
+        // Goes through comed.js's toFixedNoNegativeZero rather than a
+        // bare toFixed: tick values are built by repeated floating-point
+        // addition in niceAxis, so a tick that should be exactly 0 can
+        // come out as a tiny negative (e.g. -1.1e-16) and would render
+        // as "-0.0".
         function formatCents(value, decimals) {
-            return value.toFixed(decimals) + "\u00A2"
+            return Comed.toFixedNoNegativeZero(value, decimals) + "\u00A2"
         }
 
         // Classic "nice numbers for graph labels" approach (Heckbert):

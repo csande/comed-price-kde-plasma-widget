@@ -74,8 +74,22 @@ function bandForPrice(average) {
     return "RED"
 }
 
+// Number.prototype.toFixed decides the sign before rounding, so any
+// value that rounds to zero from the negative side (a tiny negative
+// price like -0.04, or floating-point noise like -1e-16) comes out as
+// "-0.0" / "-0". Rounds via toFixed as usual, then, if the resulting
+// text represents zero, returns the unsigned zero string instead.
+// Shared by formatPrice below and PriceGraph.qml's axis labels.
+function toFixedNoNegativeZero(value, decimals) {
+    var text = value.toFixed(decimals)
+    if (parseFloat(text) === 0) {
+        return (0).toFixed(decimals)
+    }
+    return text
+}
+
 function formatPrice(average) {
-    return "\u26A1 " + average.toFixed(1) + "\u00A2"
+    return "\u26A1 " + toFixedNoNegativeZero(average, 1) + "\u00A2"
 }
 
 // Uses the system's locale time format (12h/24h per Plasma's Regional
