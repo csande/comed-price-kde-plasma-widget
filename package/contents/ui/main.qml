@@ -39,7 +39,7 @@ PlasmoidItem {
 
     property string timeText: Comed.TIME_PLACEHOLDER_TEXT
     property bool refreshing: false
-    property var rawFeedPoints: []               // [{millisUtc, price}], oldest first, full feed as of the last successful fetch (unfiltered)
+    property var rawFeedPoints: []               // [{millisUtc, price}], oldest first, full feed as of the last successful fetch (unfiltered); reset to [] whenever a fetch yields no usable price (stale feed or failure)
 
     // A live binding, not a plain assigned property: re-evaluates
     // automatically whenever either rawFeedPoints or the graphHours
@@ -290,6 +290,12 @@ PlasmoidItem {
             fullPriceColor = Comed.colorForBand("UNKNOWN")
             fullPriceText = Comed.PRICE_UNAVAILABLE_TEXT
             timeText = Comed.TIME_PLACEHOLDER_TEXT
+            // Discard the previous fetch's data too, so the time series
+            // chart doesn't keep showing history next to an "unavailable"
+            // price. historyPoints (a live binding on rawFeedPoints)
+            // then falls back to comed.js's buildEmptyWindowSlots: axes
+            // plus missing-data markers, with no real readings drawn.
+            rawFeedPoints = []
             Plasmoid.configuration.lastBand = currentBand
         }
     }

@@ -270,7 +270,12 @@ A single poll attempts up to 3 fetches before giving up for that cycle
 If every attempt in a cycle fails — whether the request never reached
 the server at all, reached it but got an error, or succeeded but
 returned only stale or unusable data — the widget shows the explicit
-unavailable state uniformly. The one exception is at startup: the last
+unavailable state uniformly: the price and time revert to their
+placeholders, and the time series chart is cleared as well (its history
+is discarded, leaving only the empty-window chart of axes and
+missing-data markers described under "Time series chart style"), rather
+than continuing to show data from the last successful fetch. The one
+exception is at startup: the last
 successfully fetched price and its timestamp persist across Plasma
 restarts via the widget's own config storage, so the widget has
 something meaningful to show immediately before its first fetch of a
